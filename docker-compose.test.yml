@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  test:
+    build:
+      context: .
+      target: development
+      dockerfile: Dockerfile.dev
+    environment:
+      - ENVIRONMENT=test
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/.pytest_cache
+    command: >
+      sh -c "pytest --cov=app --cov-report=term-missing"
+    # Uncomment when you add the database
+    # depends_on:
+    #   - db
+    #   - redis
+    # environment:
+    #   - DATABASE_URL=postgresql://postgres:postgres@db:5432/test_aivelocity
+    #   - REDIS_URL=redis://redis:6379/1
+
+  # Uncomment when you add the database
+  # db:
+  #   image: timescale/timescaledb:latest-pg14
+  #   environment:
+  #     POSTGRES_USER: postgres
+  #     POSTGRES_PASSWORD: postgres
+  #     POSTGRES_DB: test_aivelocity
+  #   volumes:
+  #     - test_timescaledb_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5433:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
+  # redis:
+  #   image: redis:alpine
+  #   ports:
+  #     - "6380:6379"
+  #   volumes:
+  #     - test_redis_data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 3s
+  #     retries: 5
+
+# volumes:
+#   test_timescaledb_data:
+#   test_redis_data:

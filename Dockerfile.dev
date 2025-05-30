@@ -1,0 +1,87 @@
+# Development stage
+FROM python:3.10-slim as development
+
+# Set environment variables
+ENV PYTHONDUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.6.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR='/var/cache/pypoetry' \
+    PYSETUP_PATH="/opt/pysetup" \
+    WORKON_HOME="/opt/virtualenvs"
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="${POETRY_HOME}/bin:${PATH}"
+
+# Copy only the dependency files first to leverage Docker cache
+COPY pyproject.toml poetry.lock* ./
+
+# Install Python dependencies
+RUN poetry install --no-root --with dev
+
+# Copy the rest of the application
+COPY . .
+
+# Install the package in development mode
+RUN poetry install
+
+# Production stage
+FROM python:3.10-slim as production
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.6.1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_CACHE_DIR='/var/cache/pypoetry'
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH="${POETRY_HOME}/bin:${PATH}"
+
+# Copy only the dependency files first to leverage Docker cache
+COPY pyproject.toml poetry.lock* ./
+
+# Install production dependencies only
+RUN poetry install --no-root --only main
+
+# Copy the rest of the application
+COPY . .
+
+# Install the package
+RUN poetry install --only main
+
+# Expose the port the app runs on
+EXPOSE 8501
+
+# Command to run the application
+CMD ["streamlit", "run", "app/main.py", "--server.port=8501", "--server.address=0.0.0.0"]
